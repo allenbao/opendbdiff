@@ -10,6 +10,6 @@ import java.util.List;
 public interface MetadataProvider {
     
     List<Table> getTables();
-    List<Table> getTables(String tablespaceName);
+    List<Table> getTables(String schema);
     
 }
