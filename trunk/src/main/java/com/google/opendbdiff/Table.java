@@ -1,5 +1,6 @@
 package com.google.opendbdiff;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -11,15 +12,23 @@ public class Table {
     
     private String tableName;
     private List<Column> columns;
+    private List<Constraint> constraints;
     
     public Table(String tableName) {
         this.tableName = tableName;
     }
     
-    public Table(String tableName, List<Column> columns) {
+    public Table(String tableName, List<Column> columns,
+            List<Constraint> constraints) {
         this.tableName = tableName;
-        // TODO make list immutable too!
         this.columns = columns;
+        if (this.columns == null) {
+            this.columns = new ArrayList<Column>();
+        }
+        this.constraints = constraints;
+        if (this.constraints == null) {
+            this.constraints = new ArrayList<Constraint>();
+        }
     }
     
     public String getTableName() {
@@ -28,6 +37,10 @@ public class Table {
     
     public List<Column> getColumns() {
         return columns;
+    }
+    
+    public List<Constraint> getConstraints() {
+        return constraints;
     }
     
     @Override

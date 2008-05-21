@@ -1,6 +1,7 @@
 package com.google.opendbdiff.oracle;
 
 import com.google.opendbdiff.Column;
+import com.google.opendbdiff.Constraint;
 import com.google.opendbdiff.MetadataProvider;
 import com.google.opendbdiff.Table;
 import java.sql.Connection;
@@ -20,25 +21,35 @@ import java.util.TreeMap;
 public class OracleMetadataProvider implements MetadataProvider {
     
     private static final String QUERY_ALL_TABLES =
-            "select TABLE_NAME from ALL_TABLES order by TABLE_NAME";
+            "select TABLE_NAME from DBA_TABLES order by TABLE_NAME";
     
-    private static final String QUERY_TABLES_BY_TABLESPACE =
-            "select TABLE_NAME from ALL_TABLES " +
-            "where TABLESPACE_NAME=? order by TABLE_NAME";
+    private static final String QUERY_TABLES_BY_SCHEMA =
+            "select TABLE_NAME from DBA_TABLES " +
+            "where OWNER=? order by TABLE_NAME";
     
     private static final String QUERY_ALL_COLUMNS =
-            "select c.TABLE_NAME, c.COLUMN_NAME, c.DATA_TYPE, c.NULLABLE, " +
-            "c.DATA_PRECISION, c.DATA_SCALE, c.CHAR_LENGTH, c.DATA_DEFAULT " +
-            "from ALL_TAB_COLS c, ALL_TABLES t " +
-            "where c.TABLE_NAME=t.TABLE_NAME " +
-            "order by c.TABLE_NAME,c.COLUMN_NAME";
+            "select TABLE_NAME, COLUMN_NAME, DATA_TYPE, NULLABLE, " +
+            "DATA_PRECISION, DATA_SCALE, CHAR_LENGTH, DATA_DEFAULT " +
+            "from DBA_TAB_COLS " +
+            "order by TABLE_NAME, COLUMN_NAME";
     
-    private static final String QUERY_COLUMNS_BY_TABLESPACE =
-            "select c.TABLE_NAME, c.COLUMN_NAME, c.DATA_TYPE, c.NULLABLE, " +
-            "c.DATA_PRECISION, c.DATA_SCALE, c.CHAR_LENGTH, c.DATA_DEFAULT " +
-            "from ALL_TAB_COLS c, ALL_TABLES t " +
-            "where c.TABLE_NAME=t.TABLE_NAME and t.TABLESPACE_NAME=? " +
-            "order by c.TABLE_NAME,c.COLUMN_NAME";
+    private static final String QUERY_COLUMNS_BY_SCHEMA =
+            "select TABLE_NAME, COLUMN_NAME, DATA_TYPE, NULLABLE, " +
+            "DATA_PRECISION, DATA_SCALE, CHAR_LENGTH, DATA_DEFAULT " +
+            "from DBA_TAB_COLS " +
+            "where OWNER=? " +
+            "order by TABLE_NAME, COLUMN_NAME";
+    
+    private static final String QUERY_ALL_CONSTRAINTS =
+            "select CONSTRAINT_NAME, TABLE_NAME, SEARCH_CONDITION, " +
+            "DELETE_RULE,\"GENERATED\" " +
+            "from DBA_CONSTRAINTS";
+    
+    private static final String QUERY_CONSTRAINTS_BY_SCHEMA =
+            "select CONSTRAINT_NAME, TABLE_NAME, SEARCH_CONDITION, " +
+            "DELETE_RULE,\"GENERATED\" " +
+            "from DBA_CONSTRAINTS " +
+            "where OWNER=?";
     
     private Connection connection;
     
@@ -54,7 +65,7 @@ public class OracleMetadataProvider implements MetadataProvider {
         return getTables(null);
     }
     
-    public List<Table> getTables(String tablespaceName) {
+    public List<Table> getTables(String schema) {
         List<Table> tables = new ArrayList<Table>();
         try {
             ResultSet rs;
@@ -63,12 +74,12 @@ public class OracleMetadataProvider implements MetadataProvider {
             // load columns
             Map<String, List<Column>> allColumns =
                     new TreeMap<String, List<Column>>();
-            if (tablespaceName == null) {
+            if (schema == null) {
                 ps = getConnection().prepareStatement(QUERY_ALL_COLUMNS);
             } else {
                 ps = getConnection()
-                        .prepareStatement(QUERY_COLUMNS_BY_TABLESPACE);
-                ps.setString(1, tablespaceName);
+                        .prepareStatement(QUERY_COLUMNS_BY_SCHEMA);
+                ps.setString(1, schema);
             }
             rs = ps.executeQuery();
             while (rs.next()) {
@@ -108,21 +119,49 @@ public class OracleMetadataProvider implements MetadataProvider {
                 columns.add(column);
                 allColumns.put(tableName, columns);
             }
-            rs.close();
+            ps.close();
+            
+            // load constraints
+            Map<String, List<Constraint>> allConstraints =
+                    new TreeMap<String, List<Constraint>>();
+            if (schema == null) {
+                ps = getConnection().prepareStatement(QUERY_ALL_CONSTRAINTS);
+            } else {
+                ps = getConnection()
+                        .prepareStatement(QUERY_CONSTRAINTS_BY_SCHEMA);
+                ps.setString(1, schema);
+            }
+            rs = ps.executeQuery();
+            while (rs.next()) {
+                String tableName = rs.getString("TABLE_NAME");
+                Constraint constraint = new Constraint(
+                        rs.getString("CONSTRAINT_NAME"),
+                        rs.getString("SEARCH_CONDITION"),
+                        rs.getString("DELETE_RULE"),
+                        rs.getString("GENERATED").equals("GENERATED NAME"));
+                List<Constraint> constraints = allConstraints.get(tableName);
+                if (constraints == null) {
+                    constraints = new ArrayList<Constraint>();
+                }
+                constraints.add(constraint);
+                allConstraints.put(tableName, constraints);
+            }
+            ps.close();
             
             // load tables
-            if (tablespaceName == null) {
+            if (schema == null) {
                 ps = getConnection()
                         .prepareStatement(QUERY_ALL_TABLES);
             } else {
                 ps = getConnection()
-                        .prepareStatement(QUERY_TABLES_BY_TABLESPACE);
-                ps.setString(1, tablespaceName);
-                rs = ps.executeQuery();
+                        .prepareStatement(QUERY_TABLES_BY_SCHEMA);
+                ps.setString(1, schema);
             }
+            rs = ps.executeQuery();
             while (rs.next()) {
                 String tableName = rs.getString("TABLE_NAME");
-                Table t = new Table(tableName, allColumns.get(tableName));
+                Table t = new Table(tableName, allColumns.get(tableName),
+                        allConstraints.get(tableName));
                 tables.add(t);
             }
             ps.close();
