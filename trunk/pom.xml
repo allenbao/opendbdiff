@@ -34,8 +34,8 @@
         </dependency>
         <dependency>
             <groupId>swt</groupId>
-            <artifactId>swt-linux-gtk</artifactId>
-            <version>3.3.2</version>
+            <artifactId>${swt.os-specific-dep}</artifactId>
+            <version>${swt.version}</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
@@ -69,4 +69,30 @@
             <scope>compile</scope>
         </dependency>
     </dependencies>
+    <profiles>
+        <profile>
+            <id>unix</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                </os>
+            </activation>
+            <properties>
+                <swt.os-specific-dep>swt-linux-gtk</swt.os-specific-dep>
+                <swt.version>3.3.2</swt.version>
+            </properties>
+        </profile>
+        <profile>
+            <id>windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <swt.os-specific-dep>swt-win32</swt.os-specific-dep>
+                <swt.version>3.3.2</swt.version>
+            </properties>
+        </profile>
+    </profiles>
 </project>
