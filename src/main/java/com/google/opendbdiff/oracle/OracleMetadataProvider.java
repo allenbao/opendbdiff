@@ -83,12 +83,6 @@ public class OracleMetadataProvider implements MetadataProvider {
             }
             rs = ps.executeQuery();
             while (rs.next()) {
-                try {
-                    Thread.sleep(10);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-                
                 String dataType = rs.getString("DATA_TYPE");
                 Long charLength = rs.getLong("CHAR_LENGTH");
                 if (!dataType.startsWith("TIMESTAMP")) {
@@ -101,7 +95,7 @@ public class OracleMetadataProvider implements MetadataProvider {
                             if (dataScale != null && !dataScale.equals(0L)) {
                                 dataType = dataType + '(' + dataPrecision +
                                         ',' + dataScale + ')';
-                            } else {
+                            } else if (!dataPrecision.equals(0L)) {
                                 dataType = dataType + '(' + dataPrecision + ')';
                             }
                         }

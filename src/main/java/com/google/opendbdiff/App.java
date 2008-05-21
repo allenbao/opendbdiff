@@ -13,8 +13,8 @@ public class App {
         try {
             String driverCls = "oracle.jdbc.OracleDriver";
             Class.forName(driverCls);
-//            String url = "jdbc:oracle:thin:@//80.96.217.45:1521/TINREAD";
-            String url = "jdbc:oracle:thin:@//192.168.1.2:1521/TINREAD_216";
+            String url = "jdbc:oracle:thin:@//80.96.217.45:1521/TINREAD";
+//            String url = "jdbc:oracle:thin:@//192.168.1.2:1521/TINREAD_216";
             Driver driver = DriverManager.getDriver(url);
             DriverManager.registerDriver(driver);
             Properties props = new Properties();

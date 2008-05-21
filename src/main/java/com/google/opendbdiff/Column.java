@@ -24,6 +24,10 @@ public class Column {
         return columnName;
     }
     
+    public String getDataType() {
+        return dataType;
+    }
+    
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();

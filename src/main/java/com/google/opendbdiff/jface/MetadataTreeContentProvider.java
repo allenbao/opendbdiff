@@ -1,7 +1,7 @@
 package com.google.opendbdiff.jface;
 
-import com.google.opendbdiff.MetadataProvider;
 import com.google.opendbdiff.Table;
+import java.util.List;
 import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.Viewer;
 
@@ -13,8 +13,7 @@ import org.eclipse.jface.viewers.Viewer;
 public class MetadataTreeContentProvider implements ITreeContentProvider {
     
     public Object[] getElements(Object input) {
-        MetadataProvider mp = (MetadataProvider) input;
-        return mp.getTables("SIBI").toArray();
+        return ((List) input).toArray();
     }
     
     public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
