@@ -1,5 +1,8 @@
 package com.google.opendbdiff;
 
+import static com.google.opendbdiff.util.EqualsUtil.eq;
+import static com.google.opendbdiff.util.EqualsUtil.eqn;
+
 /**
  * 
  * @author Octavian Ciubotaru
@@ -28,6 +31,14 @@ public class Column {
         return dataType;
     }
     
+    public String getDefaultValue() {
+        return defaultValue;
+    }
+    
+    public boolean isNullable() {
+        return nullable;
+    }
+    
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
@@ -40,5 +51,17 @@ public class Column {
         }
         builder.append(nullable ? "\tNULL" : "\tNOT NULL");
         return builder.toString();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if ((obj == null) || (obj instanceof Column == false)) {
+            return false;
+        }
+        Column r = (Column) obj;
+        return eq(columnName, r.columnName) &&
+                eq(dataType, r.dataType) &&
+                eqn(defaultValue, r.defaultValue) &&
+                eq(nullable, r.nullable);
     }
 }

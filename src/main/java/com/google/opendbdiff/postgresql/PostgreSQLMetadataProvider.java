@@ -1,7 +1,7 @@
-package com.google.opendbdiff.oracle;
+package com.google.opendbdiff.postgresql;
 
 import com.google.opendbdiff.Column;
-import com.google.opendbdiff.Constraint;
+import com.google.opendbdiff.DbType;
 import com.google.opendbdiff.MetadataProvider;
 import com.google.opendbdiff.Table;
 import java.sql.Connection;
@@ -17,47 +17,51 @@ import org.apache.log4j.Logger;
 /**
  * 
  * @author Octavian Ciubotaru
- * @date 20 May 2008
+ * @date 24 May 2008
  */
-public class OracleMetadataProvider implements MetadataProvider {
+public class PostgreSQLMetadataProvider implements MetadataProvider {
     
     private final Logger logger =
-            Logger.getLogger(OracleMetadataProvider.class);
+            Logger.getLogger(PostgreSQLMetadataProvider.class);
     
     private static final String QUERY_ALL_TABLES =
-            "select TABLE_NAME from DBA_TABLES order by TABLE_NAME";
+            "select TABLE_NAME " +
+            "from INFORMATION_SCHEMA.TABLES " +
+            "where TABLE_TYPE = 'BASE TABLE'";
     
     private static final String QUERY_TABLES_BY_SCHEMA =
-            "select TABLE_NAME from DBA_TABLES " +
-            "where OWNER=? order by TABLE_NAME";
+            "select TABLE_NAME " +
+            "from INFORMATION_SCHEMA.TABLES " +
+            "where TABLE_TYPE = 'BASE TABLE' " +
+            "and TABLE_SCHEMA = ?";
     
     private static final String QUERY_ALL_COLUMNS =
-            "select TABLE_NAME, COLUMN_NAME, DATA_TYPE, NULLABLE, " +
-            "DATA_PRECISION, DATA_SCALE, CHAR_LENGTH, DATA_DEFAULT " +
-            "from DBA_TAB_COLS " +
-            "order by TABLE_NAME, COLUMN_NAME";
+            "select TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE, " +
+            "NUMERIC_PRECISION, NUMERIC_SCALE, CHARACTER_MAXIMUM_LENGTH, " +
+            "COLUMN_DEFAULT " +
+            "from INFORMATION_SCHEMA.COLUMNS";
     
     private static final String QUERY_COLUMNS_BY_SCHEMA =
-            "select TABLE_NAME, COLUMN_NAME, DATA_TYPE, NULLABLE, " +
-            "DATA_PRECISION, DATA_SCALE, CHAR_LENGTH, DATA_DEFAULT " +
-            "from DBA_TAB_COLS " +
-            "where OWNER=? " +
-            "order by TABLE_NAME, COLUMN_NAME";
+            "select TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE, " +
+            "NUMERIC_PRECISION, NUMERIC_SCALE, CHARACTER_MAXIMUM_LENGTH, " +
+            "COLUMN_DEFAULT " +
+            "from INFORMATION_SCHEMA.COLUMNS " +
+            "where TABLE_SCHEMA = ?";
     
-    private static final String QUERY_ALL_CONSTRAINTS =
-            "select CONSTRAINT_NAME, TABLE_NAME, SEARCH_CONDITION, " +
-            "DELETE_RULE,\"GENERATED\" " +
-            "from DBA_CONSTRAINTS";
-    
-    private static final String QUERY_CONSTRAINTS_BY_SCHEMA =
-            "select CONSTRAINT_NAME, TABLE_NAME, SEARCH_CONDITION, " +
-            "DELETE_RULE,\"GENERATED\" " +
-            "from DBA_CONSTRAINTS " +
-            "where OWNER=?";
+//    private static final String QUERY_ALL_CONSTRAINTS =
+//            "select CONSTRAINT_NAME, TABLE_NAME, SEARCH_CONDITION, " +
+//            "DELETE_RULE,\"GENERATED\" " +
+//            "from DBA_CONSTRAINTS";
+//    
+//    private static final String QUERY_CONSTRAINTS_BY_SCHEMA =
+//            "select CONSTRAINT_NAME, TABLE_NAME, SEARCH_CONDITION, " +
+//            "DELETE_RULE,\"GENERATED\" " +
+//            "from DBA_CONSTRAINTS " +
+//            "where OWNER=?";
     
     private Connection connection;
     
-    public OracleMetadataProvider(Connection connection) {
+    public PostgreSQLMetadataProvider(Connection connection) {
         this.connection = connection;
     }
     
@@ -98,14 +102,14 @@ public class OracleMetadataProvider implements MetadataProvider {
             ps.setFetchSize(1000);
             while (rs.next()) {
                 String dataType = rs.getString("DATA_TYPE");
-                Long charLength = rs.getLong("CHAR_LENGTH");
+                Long charLength = rs.getLong("CHARACTER_MAXIMUM_LENGTH");
                 if (!dataType.startsWith("TIMESTAMP")) {
                     if (charLength != null && !charLength.equals(0L)) {
                         dataType = dataType + '(' + charLength + ')';
                     } else {
-                        Long dataPrecision = rs.getLong("DATA_PRECISION");
+                        Long dataPrecision = rs.getLong("NUMERIC_PRECISION");
                         if (dataPrecision != null) {
-                            Long dataScale = rs.getLong("DATA_SCALE");
+                            Long dataScale = rs.getLong("NUMERIC_SCALE");
                             if (dataScale != null && !dataScale.equals(0L)) {
                                 dataType = dataType + '(' + dataPrecision +
                                         ',' + dataScale + ')';
@@ -115,13 +119,13 @@ public class OracleMetadataProvider implements MetadataProvider {
                         }
                     }
                 }
-                boolean nullable = rs.getString("NULLABLE").equals("Y");
+                boolean nullable = rs.getString("IS_NULLABLE").equals("Y");
                 String columnName = rs.getString("COLUMN_NAME");
                 if (logger.isTraceEnabled()) {
                     logger.trace("Column " + columnName);
                 }
                 Column column = new Column(columnName, dataType,
-                        rs.getString("DATA_DEFAULT"), nullable);
+                        rs.getString("COLUMN_DEFAULT"), nullable);
                 String tableName = rs.getString("TABLE_NAME");
                 List<Column> columns = allColumns.get(tableName);
                 if (columns == null) {
@@ -134,47 +138,47 @@ public class OracleMetadataProvider implements MetadataProvider {
             ps.close();
             
             // load constraints
-            if (logger.isDebugEnabled()) {
-                logger.debug("Loading constraints...");
-            }
-            Map<String, List<Constraint>> allConstraints =
-                    new TreeMap<String, List<Constraint>>();
-            if (schema == null) {
-                ps = getConnection().prepareStatement(QUERY_ALL_CONSTRAINTS,
-                        ResultSet.TYPE_FORWARD_ONLY,
-                        ResultSet.CONCUR_READ_ONLY);
-            } else {
-                ps = getConnection()
-                        .prepareStatement(QUERY_CONSTRAINTS_BY_SCHEMA,
-                            ResultSet.TYPE_FORWARD_ONLY,
-                            ResultSet.CONCUR_READ_ONLY);
-                ps.setString(1, schema);
-            }
-            ps.setFetchDirection(ResultSet.FETCH_FORWARD);
-            ps.setFetchSize(1000);
-            rs = ps.executeQuery();
-            rs.setFetchDirection(ResultSet.FETCH_FORWARD);
-            ps.setFetchSize(1000);
-            while (rs.next()) {
-                String tableName = rs.getString("TABLE_NAME");
-                Constraint constraint = new Constraint(
-                        rs.getString("CONSTRAINT_NAME"),
-                        rs.getString("SEARCH_CONDITION"),
-                        rs.getString("DELETE_RULE"),
-                        rs.getString("GENERATED").equals("GENERATED NAME"));
-                if (logger.isTraceEnabled()) {
-                    logger.trace("Constraint " +
-                            constraint.getConstraintName());
-                }
-                List<Constraint> constraints = allConstraints.get(tableName);
-                if (constraints == null) {
-                    constraints = new ArrayList<Constraint>();
-                }
-                constraints.add(constraint);
-                allConstraints.put(tableName, constraints);
-            }
-            rs.close();
-            ps.close();
+//            if (logger.isDebugEnabled()) {
+//                logger.debug("Loading constraints...");
+//            }
+//            Map<String, List<Constraint>> allConstraints =
+//                    new TreeMap<String, List<Constraint>>();
+//            if (schema == null) {
+//                ps = getConnection().prepareStatement(QUERY_ALL_CONSTRAINTS,
+//                        ResultSet.TYPE_FORWARD_ONLY,
+//                        ResultSet.CONCUR_READ_ONLY);
+//            } else {
+//                ps = getConnection()
+//                        .prepareStatement(QUERY_CONSTRAINTS_BY_SCHEMA,
+//                            ResultSet.TYPE_FORWARD_ONLY,
+//                            ResultSet.CONCUR_READ_ONLY);
+//                ps.setString(1, schema);
+//            }
+//            ps.setFetchDirection(ResultSet.FETCH_FORWARD);
+//            ps.setFetchSize(1000);
+//            rs = ps.executeQuery();
+//            rs.setFetchDirection(ResultSet.FETCH_FORWARD);
+//            ps.setFetchSize(1000);
+//            while (rs.next()) {
+//                String tableName = rs.getString("TABLE_NAME");
+//                Constraint constraint = new Constraint(
+//                        rs.getString("CONSTRAINT_NAME"),
+//                        rs.getString("SEARCH_CONDITION"),
+//                        rs.getString("DELETE_RULE"),
+//                        rs.getString("GENERATED").equals("GENERATED NAME"));
+//                if (logger.isTraceEnabled()) {
+//                    logger.trace("Constraint " +
+//                            constraint.getConstraintName());
+//                }
+//                List<Constraint> constraints = allConstraints.get(tableName);
+//                if (constraints == null) {
+//                    constraints = new ArrayList<Constraint>();
+//                }
+//                constraints.add(constraint);
+//                allConstraints.put(tableName, constraints);
+//            }
+//            rs.close();
+//            ps.close();
             
             // load tables
             if (logger.isDebugEnabled()) {
@@ -201,7 +205,7 @@ public class OracleMetadataProvider implements MetadataProvider {
                     logger.trace("Table " + tableName);
                 }
                 Table t = new Table(tableName, allColumns.get(tableName),
-                        allConstraints.get(tableName));
+                        null /*allConstraints.get(tableName)*/);
                 tables.add(t);
             }
             rs.close();

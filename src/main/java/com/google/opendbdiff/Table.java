@@ -1,5 +1,7 @@
 package com.google.opendbdiff;
 
+import static com.google.opendbdiff.util.EqualsUtil.eq;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,5 +48,18 @@ public class Table {
     @Override
     public String toString() {
         return tableName;
+    }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if ((obj == null) || (obj instanceof Table == false)) {
+            return false;
+        }
+        return eq(tableName, ((Table) obj).tableName);
+    }
+    
+    @Override
+    public int hashCode() {
+        return (tableName != null) ? tableName.hashCode() : 0;
     }
 }

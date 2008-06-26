@@ -1,7 +1,6 @@
 package com.google.opendbdiff.jface;
 
-import com.google.opendbdiff.Table;
-import java.util.List;
+import com.google.opendbdiff.diff.TableDiff;
 import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.Viewer;
 
@@ -13,7 +12,7 @@ import org.eclipse.jface.viewers.Viewer;
 public class MetadataTreeContentProvider implements ITreeContentProvider {
     
     public Object[] getElements(Object input) {
-        return ((List) input).toArray();
+        return (TableDiff[]) input;
     }
     
     public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
@@ -22,21 +21,20 @@ public class MetadataTreeContentProvider implements ITreeContentProvider {
     public void dispose() {
     }
     
-    public Object[] getChildren(Object obj) {
-        if (obj instanceof Table) {
-            Table table = (Table) obj;
-            return table.getColumns().toArray();
+    public Object[] getChildren(Object element) {
+        if (element instanceof TableDiff) {
+            return ((TableDiff) element).getColumnDiffs();
         }
         return null;
     }
     
-    public Object getParent(Object obj) {
+    public Object getParent(Object element) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
     
-    public boolean hasChildren(Object obj) {
-        if (obj instanceof Table) {
-            return ((Table) obj).getColumns().size() > 0;
+    public boolean hasChildren(Object element) {
+        if (element instanceof TableDiff) {
+            return ((TableDiff) element).getColumnDiffs().length > 0;
         }
         return false;
     }

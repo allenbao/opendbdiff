@@ -7,7 +7,7 @@ import com.google.opendbdiff.Table;
  * @author Octavian Ciubotaru
  * @date 22 May 2008
  */
-public class TableDiff {
+public class TableDiff implements Modifiable {
     
     private Table table;
     private Table refTable;
@@ -32,5 +32,9 @@ public class TableDiff {
     
     public Difference getDifference() {
         return difference;
+    }
+    
+    public ColumnDiff[] getColumnDiffs() {
+        return columnDiffs;
     }
 }
