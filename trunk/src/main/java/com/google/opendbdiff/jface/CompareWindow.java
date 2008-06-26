@@ -1,13 +1,9 @@
 package com.google.opendbdiff.jface;
 
-import com.google.opendbdiff.App;
-import com.google.opendbdiff.MetadataProvider;
-import org.eclipse.jface.viewers.TreeViewer;
+import com.google.opendbdiff.diff.DiffScript;
+import com.google.opendbdiff.diff.TableDiff;
+import com.google.opendbdiff.diff.pg.PgDiffScript;
 import org.eclipse.jface.window.ApplicationWindow;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.layout.FillLayout;
-import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
@@ -24,35 +20,39 @@ public class CompareWindow extends ApplicationWindow {
     }
     
     @Override
-    protected Control createContents(Composite parent) {
+    protected Control createContents(final Composite parent) {
         
-        parent.setSize(600, 400);
+        parent.setSize(700, 800);
         
         getShell().setText("Open DbDiff");
         
-        Composite comp = new Composite(parent, SWT.NONE);
-        
-        FillLayout layout = new FillLayout(SWT.HORIZONTAL);
-        layout.spacing = 3;
-        layout.marginHeight = 3;
-        layout.marginWidth = 3;
-        comp.setLayout(layout);
-        
-        MetadataProvider mp = App.getTestProvider();
-        
-        // left
-        TreeViewer treeViewer = new TreeViewer(comp);
-        treeViewer.setContentProvider(new MetadataTreeContentProvider());
-        treeViewer.setInput(mp.getTables("SCOTT"));
-        treeViewer.setLabelProvider(new MetadataLabelProvider());
-        treeViewer.expandAll();
-        
-        // right
-        TreeViewer treeViewer2 = new TreeViewer(comp);
-        treeViewer2.setContentProvider(new MetadataTreeContentProvider());
-        treeViewer2.setInput(mp.getTables("TOAD"));
-        treeViewer2.setLabelProvider(new MetadataLabelProvider());
-        treeViewer2.expandAll();
+//        SashForm sashForm = new SashForm(parent, SWT.HORIZONTAL);
+//        
+//        MetadataProvider mp1 = App.getTestProvider();
+//        List<Table> src = mp1.getTables("public");
+//        
+//        MetadataProvider mp2 = App.getTestProvider2();
+//        List<Table> dest = mp2.getTables("public");
+//        
+//        TableDiff tableDiffs[] = new Differ().diff(src, dest);
+//        
+//        TreeViewer treeViewer = new TreeViewer(sashForm);
+//        treeViewer.setContentProvider(new MetadataTreeContentProvider());
+//        treeViewer.setInput(tableDiffs);
+//        ILabelProvider labelProvider = new MetadataLabelProvider();
+//        ILabelDecorator labelDecorator = new DiffLabelDecorator();
+//        DecoratingLabelProvider decoratingLabelProvider =
+//                new DecoratingLabelProvider(labelProvider, labelDecorator);
+//        treeViewer.setLabelProvider(decoratingLabelProvider);
+//        
+//        TextViewer textViewer =
+//                new TextViewer(sashForm, SWT.MULTI | SWT.V_SCROLL);
+//        Document document = new Document();
+//        document.set(getScript(tableDiffs));
+//        textViewer.setDocument(document);
+//        textViewer.setEditable(false);
+//        FontRegistry fr = JFaceResources.getFontRegistry();
+//        textViewer.getControl().setFont(fr.get("Lucida Console"));
         
         return parent;
     }
@@ -62,5 +62,19 @@ public class CompareWindow extends ApplicationWindow {
         cwin.setBlockOnOpen(true);
         cwin.open();
         Display.getCurrent().dispose();
+    }
+    
+    private String getScript(TableDiff[] tableDiffs) {
+        StringBuilder sb = new StringBuilder();
+        DiffScript ds = new PgDiffScript();
+        String script;
+        for (TableDiff tableDiff : tableDiffs) {
+            script = ds.getScript(tableDiff);
+            if (script != null) {
+                sb.append(script);
+                sb.append("\n\n");
+            }
+        }
+        return sb.toString();
     }
 }
