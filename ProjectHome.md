@@ -1,0 +1,1 @@
+Open DbDiff is a very simple tool to synchronize two versions of database.
